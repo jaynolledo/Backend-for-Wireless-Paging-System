@@ -1,0 +1,82 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+
+#include <ESP8266WebServer.h>
+
+IPAddress ip(192, 168, 137, 143);
+IPAddress gateway(192, 168, 137, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+#define LED D4
+
+const char* ssid = "*******";
+const char* password = "*******";
+
+ESP8266WebServer server(80);
+
+bool frog = false;
+void handleRoot() {
+Serial.println("Root request");
+server.send(404);
+}
+
+void handlePing() {
+Serial.println("Ping request");
+server.send(200);
+}
+void handlePage() {
+Serial.print("Page request");
+if(digitalRead(D5)){
+  server.send(202);
+  Serial.println(" -> auto-accept");
+  digitalWrite(LED,HIGH);
+  delay(10000);
+  digitalWrite(LED,LOW);    
+}
+else{
+  server.send(204);
+  Serial.println(" -> auto-deny");
+  digitalWrite(LED,LOW);  
+  }
+}
+void setup(void){
+  Serial.begin(74880);
+
+  pinMode(LED,OUTPUT); 
+digitalWrite(LED,LOW);
+
+  pinMode(D5, INPUT_PULLUP);
+
+  WiFi.config(ip, subnet, gateway);
+  WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_STA);
+while (WiFi.status() != WL_CONNECTED) {
+  digitalWrite(LED, HIGH); delay(250);
+  digitalWrite(LED, LOW); delay(250);
+  Serial.print(".\n");
+} 
+  Serial.println("");
+
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  server.on("/", handleRoot);
+  server.on("/everythingisawesome", handlePing);
+  server.on("/everythingisawesome/yeah", handlePage);
+  server.onNotFound(handleRoot);
+  server.begin();
+  Serial.println("HTTP server started");
+}
+unsigned long past = 0;
+
+void loop(void){
+  server.handleClient();
+  if (!digitalRead(D5)){
+    if ((millis() - past) > 2000){
+      past = millis();
+      digitalWrite(D4,HIGH); delay(25);
+      digitalWrite(D4,LOW);
+    }
+  }
+}
